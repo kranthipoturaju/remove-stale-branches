@@ -20,7 +20,8 @@ async function processBranch(
   plan: Plan,
   branch: Branch,
   commitComments: TaggedCommitComments,
-  params: Params
+  params: Params,
+  deletedBranches: string[]
 ) {
   console.log(
     "-> branch was last updated by " +
@@ -87,6 +88,7 @@ async function processBranch(
     }
 
     commitComments.deleteBranch(branch);
+    deletedBranches.push(branch.branchName);
 
     plan.comments.forEach((c) => {
       commitComments.deleteCommitComments({ commentId: c.id });
@@ -238,7 +240,7 @@ function logActionRunConfiguration(
 export async function removeStaleBranches(
   octokit: Octokit,
   params: Params
-): Promise<void> {
+): Promise<string[]> {
   const headers: { [key: string]: string } = params.githubToken
     ? {
         "Content-Type": "application/json",
@@ -270,6 +272,7 @@ export async function removeStaleBranches(
   };
   const commitComments = new TaggedCommitComments(repo, octokit, headers);
   let operations = 0;
+  const deletedBranches: string[] = [];
   let summary: Record<Plan["action"], number> & { scanned: number } = {
     remove: 0,
     "mark stale": 0,
@@ -282,7 +285,7 @@ export async function removeStaleBranches(
     console.error(
       "When ignoring unknown authors, you must specify a default recipient"
     );
-    return;
+    return deletedBranches;
   }
 
   logActionRunConfiguration(params, staleCutoff, removeCutoff);
@@ -311,7 +314,7 @@ export async function removeStaleBranches(
     summary[plan.action]++;
     core.startGroup(`${icons[plan.action]} branch ${branch.branchName}`);
     try {
-      await processBranch(plan, branch, commitComments, params);
+      await processBranch(plan, branch, commitComments, params, deletedBranches);
 
       if (plan.action !== "skip" && plan.action != "keep stale") {
         operations++;
@@ -322,7 +325,7 @@ export async function removeStaleBranches(
 
     if (operations >= params.operationsPerRun) {
       console.log("Stopping after " + operations + " operations");
-      return;
+      return deletedBranches;
     }
   }
 
@@ -334,4 +337,5 @@ export async function removeStaleBranches(
     `${icons.remove} ${summary.remove} removed`,
   ].join(", ");
   console.log(`Summary:  ${actionSummary}`);
+  return deletedBranches;
 }

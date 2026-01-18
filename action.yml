@@ -7,6 +7,9 @@ branding:
 runs:
   using: "node20"
   main: "dist/index.js"
+outputs:
+  deleted-branches:
+    description: "List of branches deleted by the action."
 inputs:
   github-token:
     description: "PAT for GitHub API authentication."

@@ -62,7 +62,7 @@ async function run(): Promise<void> {
     { required: false }
   );
 
-  return removeStaleBranches(octokit, {
+  const deletedBranches = await removeStaleBranches(octokit, {
     isDryRun,
     repo,
     daysBeforeBranchStale,
@@ -79,6 +79,8 @@ async function run(): Promise<void> {
     ignoreUnknownAuthors,
     ignoreBranchesWithOpenPRs,
   });
+
+  core.setOutput("deleted-branches", deletedBranches);
 }
 
 run();
